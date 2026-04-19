@@ -55,8 +55,13 @@ public struct Drop: ExpressibleByStringLiteral {
     duration: Duration = .recommended,
     accessibility: Accessibility? = nil,
     accentColor: UIColor? = nil,
-    glassTintColor: UIColor? = nil
+    glassTintColor: UIColor? = nil,
+    id: String? = nil,
+    progress: Progress? = nil
   ) {
+    if let id = id?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty {
+      self.id = id
+    }
     self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
     self.titleNumberOfLines = titleNumberOfLines
     if let subtitle = subtitle?.trimmingCharacters(in: .whitespacesAndNewlines), !subtitle.isEmpty {
@@ -71,6 +76,7 @@ public struct Drop: ExpressibleByStringLiteral {
     ?? .init(message: [title, subtitle].compactMap { $0 }.joined(separator: ", "))
     self.accentColor = accentColor
     self.glassTintColor = glassTintColor
+    self.progress = progress
   }
 
   /// Create a new accessibility object.
@@ -84,7 +90,11 @@ public struct Drop: ExpressibleByStringLiteral {
     accessibility = .init(message: title)
     accentColor = nil
     glassTintColor = nil
+    progress = nil
   }
+
+  /// Stable identifier used to update an existing drop in place.
+  public var id: String?
 
   /// Title.
   public var title: String
@@ -118,6 +128,9 @@ public struct Drop: ExpressibleByStringLiteral {
 
   /// Optional tint color overlay for the glass effect (iOS 26+ only).
   public var glassTintColor: UIColor?
+
+  /// Optional progress indicator.
+  public var progress: Progress?
 }
 
 public extension Drop {
@@ -137,6 +150,8 @@ public extension Drop {
     case recommended
     /// Hides the drop after the specified number of seconds.
     case seconds(TimeInterval)
+    /// Keeps the drop visible until it is hidden manually.
+    case untilHidden
 
     /// Create a new duration object.
     /// - Parameter value: Duration in seconds
@@ -144,12 +159,32 @@ public extension Drop {
       self = .seconds(value)
     }
 
-    internal var value: TimeInterval {
+    internal var value: TimeInterval? {
       switch self {
       case .recommended:
         return 2.0
       case let .seconds(custom):
         return abs(custom)
+      case .untilHidden:
+        return nil
+      }
+    }
+  }
+}
+
+public extension Drop {
+  /// An enum representing the drop progress indicator.
+  enum Progress: Equatable {
+    case determinate(Double)
+    case indeterminate
+
+    /// Normalized progress value in the `0...1` range when determinate.
+    var fractionCompleted: Double? {
+      switch self {
+      case let .determinate(value):
+        return min(1, max(0, value))
+      case .indeterminate:
+        return nil
       }
     }
   }
@@ -192,6 +227,24 @@ public extension Drop {
 
     /// Accessibility message to be announced when the drop is shown.
     public let message: String
+  }
+}
+
+internal extension Drop {
+  func replacingCurrent(with incoming: Drop) -> Drop {
+    var updated = self
+    updated.id = incoming.id
+    updated.title = incoming.title
+    updated.titleNumberOfLines = incoming.titleNumberOfLines
+    updated.subtitle = incoming.subtitle
+    updated.subtitleNumberOfLines = incoming.subtitleNumberOfLines
+    updated.icon = incoming.icon
+    updated.duration = incoming.duration
+    updated.accessibility = incoming.accessibility
+    updated.accentColor = incoming.accentColor
+    updated.glassTintColor = incoming.glassTintColor
+    updated.progress = incoming.progress
+    return updated
   }
 }
 #endif

@@ -28,12 +28,14 @@ import XCTest
 final class DropTests: XCTestCase {
   func testDefaultInitializer() {
     let drop = Drop(title: "Hello world")
+    XCTAssertNil(drop.id)
     XCTAssertEqual(drop.title, "Hello world")
     XCTAssertEqual(drop.titleNumberOfLines, 1)
     XCTAssertNil(drop.subtitle)
     XCTAssertEqual(drop.subtitleNumberOfLines, 1)
     XCTAssertNil(drop.icon)
     XCTAssertNil(drop.action)
+    XCTAssertNil(drop.progress)
     XCTAssertEqual(drop.position, .top)
     XCTAssertEqual(drop.duration, .recommended)
     XCTAssertEqual(drop.accessibility.message, "Hello world")
@@ -80,6 +82,14 @@ final class DropTests: XCTestCase {
   func testDurationValue() {
     XCTAssertEqual(Drop.Duration.recommended.value, 2)
     XCTAssertEqual(Drop.Duration.seconds(1).value, 1)
+    XCTAssertNil(Drop.Duration.untilHidden.value)
+  }
+
+  func testDeterminateProgressIsNormalized() {
+    XCTAssertEqual(Drop.Progress.determinate(-0.5).fractionCompleted, 0)
+    XCTAssertEqual(Drop.Progress.determinate(0.25).fractionCompleted, 0.25)
+    XCTAssertEqual(Drop.Progress.determinate(1.5).fractionCompleted, 1)
+    XCTAssertNil(Drop.Progress.indeterminate.fractionCompleted)
   }
 }
 #endif

@@ -29,41 +29,9 @@ internal final class DropView: UIView {
     self.drop = drop
     super.init(frame: .zero)
 
-    if #available(iOS 26.0, *) {
-      // iOS 26+: Glass background, no extra shadows/rasterization from us.
-      isOpaque = false
-      backgroundColor = .clear
-      layer.allowsGroupOpacity = false
-
-      insertSubview(glassBackgroundView, at: 0)
-      NSLayoutConstraint.activate([
-        glassBackgroundView.leadingAnchor.constraint(equalTo: leadingAnchor),
-        glassBackgroundView.trailingAnchor.constraint(equalTo: trailingAnchor),
-        glassBackgroundView.topAnchor.constraint(equalTo: topAnchor),
-        glassBackgroundView.bottomAnchor.constraint(equalTo: bottomAnchor)
-      ])
-
-      // Optional glass tint overlay if provided.
-      if let tint = drop.glassTintColor {
-        glassBackgroundView.contentView.addSubview(glassTintOverlay)
-        glassTintOverlay.backgroundColor = tint.withAlphaComponent(Self.glassTintAlpha)
-        NSLayoutConstraint.activate([
-          glassTintOverlay.leadingAnchor.constraint(equalTo: glassBackgroundView.contentView.leadingAnchor),
-          glassTintOverlay.trailingAnchor.constraint(equalTo: glassBackgroundView.contentView.trailingAnchor),
-          glassTintOverlay.topAnchor.constraint(equalTo: glassBackgroundView.contentView.topAnchor),
-          glassTintOverlay.bottomAnchor.constraint(equalTo: glassBackgroundView.contentView.bottomAnchor)
-        ])
-      }
-    } else {
-      // Older iOS: Solid background.
-      backgroundColor = .secondarySystemBackground
-    }
-
-    addSubview(stackView)
-
-    let constraints = createLayoutConstraints(for: drop)
-    NSLayoutConstraint.activate(constraints)
-    configureViews(for: drop)
+    configureBackgroundHierarchy()
+    configureContentHierarchy()
+    apply(drop: drop)
   }
 
   required init?(coder _: NSCoder) {
@@ -94,19 +62,15 @@ internal final class DropView: UIView {
     super.layoutSubviews()
 
     if #available(iOS 26.0, *) {
-      // Keep capsule shape by clipping the effect view (and its tint overlay) to a pill.
       let radius = bounds.height / 2
       glassBackgroundView.layer.masksToBounds = true
       glassBackgroundView.layer.cornerCurve = .continuous
       glassBackgroundView.layer.cornerRadius = radius
 
-      if glassTintOverlay.superview != nil {
-        glassTintOverlay.layer.masksToBounds = true
-        glassTintOverlay.layer.cornerCurve = .continuous
-        glassTintOverlay.layer.cornerRadius = radius
-      }
+      glassTintOverlay.layer.masksToBounds = true
+      glassTintOverlay.layer.cornerCurve = .continuous
+      glassTintOverlay.layer.cornerRadius = radius
 
-      // No custom shadow path on iOS 26+.
       layer.shadowPath = nil
     } else {
       let radius = bounds.height / 2
@@ -114,42 +78,41 @@ internal final class DropView: UIView {
     }
   }
 
-  let drop: Drop
+  private(set) var drop: Drop
+  private var layoutConstraints: [NSLayoutConstraint] = []
+  private var contentTapGesture: UITapGestureRecognizer?
 
   func createLayoutConstraints(for drop: Drop) -> [NSLayoutConstraint] {
-    var constraints: [NSLayoutConstraint] = []
-
-    constraints += [
+    var constraints: [NSLayoutConstraint] = [
       imageView.heightAnchor.constraint(equalToConstant: 25),
-      imageView.widthAnchor.constraint(equalToConstant: 25)
-    ]
-
-    constraints += [
-      button.heightAnchor.constraint(equalToConstant: 35),
-      button.widthAnchor.constraint(equalToConstant: 35)
+      imageView.widthAnchor.constraint(equalToConstant: 25),
+      trailingContainer.heightAnchor.constraint(equalToConstant: 35),
+      trailingContainer.widthAnchor.constraint(equalToConstant: 35)
     ]
 
     var insets = UIEdgeInsets(top: 7.5, left: 12.5, bottom: 7.5, right: 12.5)
+    let hasTrailingControl = hasTrailingControl(for: drop)
 
     if drop.icon == nil {
       insets.left = 40
     }
 
-    if drop.action?.icon == nil {
+    if !hasTrailingControl {
       insets.right = 40
     }
 
     if drop.subtitle == nil {
       insets.top = 15
       insets.bottom = 15
-      if drop.action?.icon != nil {
+
+      if hasTrailingControl {
         insets.top = 10
         insets.bottom = 10
         insets.right = 10
       }
     }
 
-    if drop.icon == nil, drop.action?.icon == nil {
+    if drop.icon == nil, !hasTrailingControl {
       insets.left = 50
       insets.right = 50
     }
@@ -164,8 +127,68 @@ internal final class DropView: UIView {
     return constraints
   }
 
-  func configureViews(for drop: Drop) {
-    // On iOS 26+, let the system glass handle its own capsule; don't clip the container.
+  func update(drop: Drop) {
+    apply(drop: drop)
+  }
+
+  @objc
+  func didTapButton() {
+    drop.action?.handler()
+  }
+
+  private func apply(drop: Drop) {
+    self.drop = drop
+    updateLayoutConstraints(for: drop)
+    configureViews(for: drop)
+  }
+
+  private func updateLayoutConstraints(for drop: Drop) {
+    NSLayoutConstraint.deactivate(layoutConstraints)
+    layoutConstraints = createLayoutConstraints(for: drop)
+    NSLayoutConstraint.activate(layoutConstraints)
+  }
+
+  private func configureBackgroundHierarchy() {
+    if #available(iOS 26.0, *) {
+      isOpaque = false
+      backgroundColor = .clear
+      layer.allowsGroupOpacity = false
+
+      insertSubview(glassBackgroundView, at: 0)
+      glassBackgroundView.contentView.addSubview(glassTintOverlay)
+      NSLayoutConstraint.activate([
+        glassBackgroundView.leadingAnchor.constraint(equalTo: leadingAnchor),
+        glassBackgroundView.trailingAnchor.constraint(equalTo: trailingAnchor),
+        glassBackgroundView.topAnchor.constraint(equalTo: topAnchor),
+        glassBackgroundView.bottomAnchor.constraint(equalTo: bottomAnchor),
+        glassTintOverlay.leadingAnchor.constraint(equalTo: glassBackgroundView.contentView.leadingAnchor),
+        glassTintOverlay.trailingAnchor.constraint(equalTo: glassBackgroundView.contentView.trailingAnchor),
+        glassTintOverlay.topAnchor.constraint(equalTo: glassBackgroundView.contentView.topAnchor),
+        glassTintOverlay.bottomAnchor.constraint(equalTo: glassBackgroundView.contentView.bottomAnchor)
+      ])
+    } else {
+      backgroundColor = .secondarySystemBackground
+    }
+  }
+
+  private func configureContentHierarchy() {
+    addSubview(stackView)
+    trailingContainer.addSubview(button)
+    trailingContainer.addSubview(progressView)
+
+    NSLayoutConstraint.activate([
+      button.leadingAnchor.constraint(equalTo: trailingContainer.leadingAnchor),
+      button.trailingAnchor.constraint(equalTo: trailingContainer.trailingAnchor),
+      button.topAnchor.constraint(equalTo: trailingContainer.topAnchor),
+      button.bottomAnchor.constraint(equalTo: trailingContainer.bottomAnchor),
+      progressView.leadingAnchor.constraint(equalTo: trailingContainer.leadingAnchor),
+      progressView.trailingAnchor.constraint(equalTo: trailingContainer.trailingAnchor),
+      progressView.topAnchor.constraint(equalTo: trailingContainer.topAnchor),
+      progressView.bottomAnchor.constraint(equalTo: trailingContainer.bottomAnchor)
+    ])
+  }
+
+  private func configureViews(for drop: Drop) {
     if #available(iOS 26.0, *) {
       clipsToBounds = false
     } else {
@@ -179,7 +202,6 @@ internal final class DropView: UIView {
     subtitleLabel.numberOfLines = drop.subtitleNumberOfLines
     subtitleLabel.isHidden = drop.subtitle == nil
 
-    // Icon tinting: prefer accentColor if provided; otherwise keep existing behavior.
     if let icon = drop.icon {
       if let accent = drop.accentColor {
         imageView.image = icon.withRenderingMode(.alwaysTemplate)
@@ -193,36 +215,61 @@ internal final class DropView: UIView {
     }
     imageView.isHidden = drop.icon == nil
 
-    // Action button tinting: background uses accentColor if provided.
+    let progressTint = resolvedProgressTint(for: drop)
+    progressView.configure(progress: drop.progress, tintColor: progressTint)
+    progressView.isHidden = drop.progress == nil
+
     button.setImage(drop.action?.icon, for: .normal)
-    button.isHidden = drop.action?.icon == nil
+    button.isHidden = drop.progress != nil || drop.action?.icon == nil
     if let accent = drop.accentColor {
       button.backgroundColor = accent
-      button.tintColor = .white // ensure contrast for symbol
+      button.tintColor = .white
     } else {
       button.backgroundColor = .link
       button.tintColor = .white
     }
 
-    if let action = drop.action, action.icon == nil {
-      let tap = UITapGestureRecognizer(target: self, action: #selector(didTapButton))
-      addGestureRecognizer(tap)
+    trailingContainer.isHidden = !hasTrailingControl(for: drop)
+
+    let isTapActionEnabled = drop.progress == nil && drop.action?.icon == nil && drop.action != nil
+    if isTapActionEnabled {
+      if contentTapGesture == nil {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(didTapButton))
+        addGestureRecognizer(tap)
+        contentTapGesture = tap
+      }
+    } else if let contentTapGesture {
+      removeGestureRecognizer(contentTapGesture)
+      self.contentTapGesture = nil
     }
 
+    stackView.spacing = drop.icon != nil && hasTrailingControl(for: drop) ? 20 : 15
+
+    updateBackgroundAppearance(for: drop)
+  }
+
+  private func updateBackgroundAppearance(for drop: Drop) {
     if #available(iOS 26.0, *) {
-      // Glass: disable our own shadows and rasterization to avoid artifacts and double effects.
       layer.shadowOpacity = 0
       layer.shadowRadius = 0
       layer.shadowOffset = .zero
       layer.shouldRasterize = false
       layer.masksToBounds = false
 
-      // If Reduce Transparency is enabled, optionally fall back to solid background.
       if UIAccessibility.isReduceTransparencyEnabled {
         backgroundColor = .secondarySystemBackground
+      } else {
+        backgroundColor = .clear
+      }
+
+      if let tint = drop.glassTintColor {
+        glassTintOverlay.isHidden = false
+        glassTintOverlay.backgroundColor = tint.withAlphaComponent(Self.glassTintAlpha)
+      } else {
+        glassTintOverlay.isHidden = true
+        glassTintOverlay.backgroundColor = .clear
       }
     } else {
-      // Solid background: keep the existing soft shadow with a defined path (set in layoutSubviews).
       layer.shadowColor = UIColor.black.cgColor
       layer.shadowOffset = .zero
       layer.shadowRadius = 25
@@ -235,12 +282,13 @@ internal final class DropView: UIView {
     }
   }
 
-  @objc
-  func didTapButton() {
-    drop.action?.handler()
+  private func hasTrailingControl(for drop: Drop) -> Bool {
+    drop.progress != nil || drop.action?.icon != nil
   }
 
-  // MARK: - Subviews
+  private func resolvedProgressTint(for drop: Drop) -> UIColor {
+    drop.accentColor ?? .dropsProgressDefault
+  }
 
   lazy var titleLabel: UILabel = {
     let label = UILabel()
@@ -285,6 +333,13 @@ internal final class DropView: UIView {
     return button
   }()
 
+  lazy var progressView: CircularProgressView = {
+    let view = CircularProgressView()
+    view.translatesAutoresizingMaskIntoConstraints = false
+    view.isHidden = true
+    return view
+  }()
+
   lazy var labelsStackView: UIStackView = {
     let view = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel])
     view.translatesAutoresizingMaskIntoConstraints = false
@@ -295,21 +350,22 @@ internal final class DropView: UIView {
     return view
   }()
 
+  lazy var trailingContainer: UIView = {
+    let view = UIView()
+    view.translatesAutoresizingMaskIntoConstraints = false
+    return view
+  }()
+
   lazy var stackView: UIStackView = {
-    let view = UIStackView(arrangedSubviews: [imageView, labelsStackView, button])
+    let view = UIStackView(arrangedSubviews: [imageView, labelsStackView, trailingContainer])
     view.translatesAutoresizingMaskIntoConstraints = false
     view.axis = .horizontal
     view.alignment = .center
     view.distribution = .fill
-    if drop.icon != nil, drop.action?.icon != nil {
-      view.spacing = 20
-    } else {
-      view.spacing = 15
-    }
+    view.spacing = 15
     return view
   }()
 
-  // Background glass effect container (iOS 26+)
   private lazy var glassBackgroundView: UIVisualEffectView = {
     let effect: UIVisualEffect
     if #available(iOS 26.0, *) {
@@ -317,26 +373,131 @@ internal final class DropView: UIView {
     } else {
       effect = UIBlurEffect(style: .systemThinMaterial)
     }
-    let v = UIVisualEffectView(effect: effect)
-    v.isOpaque = false
-    v.backgroundColor = .clear
-    v.translatesAutoresizingMaskIntoConstraints = false
-    v.isUserInteractionEnabled = false
-    return v
+    let view = UIVisualEffectView(effect: effect)
+    view.isOpaque = false
+    view.backgroundColor = .clear
+    view.translatesAutoresizingMaskIntoConstraints = false
+    view.isUserInteractionEnabled = false
+    return view
   }()
 
-  // Optional tint overlay for glass (iOS 26+ when glassTintColor is provided)
   private lazy var glassTintOverlay: UIView = {
-    let v = UIView()
-    v.translatesAutoresizingMaskIntoConstraints = false
-    v.isUserInteractionEnabled = false
-    v.backgroundColor = .clear
-    return v
+    let view = UIView()
+    view.translatesAutoresizingMaskIntoConstraints = false
+    view.isUserInteractionEnabled = false
+    view.isHidden = true
+    view.backgroundColor = .clear
+    return view
   }()
-
-  // MARK: - Constants
 
   private static let glassTintAlpha: CGFloat = 0.12
+}
+
+internal final class CircularProgressView: UIView {
+  private enum Constants {
+    static let lineWidth: CGFloat = 4
+    static let indeterminateStrokeEnd: CGFloat = 0.28
+    static let animationKey = "drops.indeterminate.rotation"
+  }
+
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    isAccessibilityElement = false
+
+    [shadowTrackLayer, trackLayer, progressLayer].forEach(layer.addSublayer)
+
+    shadowTrackLayer.fillColor = UIColor.clear.cgColor
+    shadowTrackLayer.lineWidth = Constants.lineWidth
+
+    trackLayer.fillColor = UIColor.clear.cgColor
+    trackLayer.lineWidth = Constants.lineWidth
+
+    progressLayer.fillColor = UIColor.clear.cgColor
+    progressLayer.lineWidth = Constants.lineWidth
+    progressLayer.lineCap = .round
+  }
+
+  required init?(coder _: NSCoder) {
+    return nil
+  }
+
+  override func layoutSubviews() {
+    super.layoutSubviews()
+
+    let inset = Constants.lineWidth / 2 + 1
+    let ringRect = bounds.insetBy(dx: inset, dy: inset)
+    let path = UIBezierPath(ovalIn: ringRect).cgPath
+    let rotation = CATransform3DMakeRotation(-.pi / 2, 0, 0, 1)
+
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    [shadowTrackLayer, trackLayer, progressLayer].forEach {
+      $0.path = path
+      $0.frame = bounds
+      $0.transform = rotation
+    }
+    progressLayer.shadowPath = path
+    CATransaction.commit()
+  }
+
+  private(set) var progress: Drop.Progress?
+  private(set) var resolvedTintColor: UIColor = .dropsProgressDefault
+
+  var isAnimatingIndeterminate: Bool {
+    progressLayer.animation(forKey: Constants.animationKey) != nil
+  }
+
+  func configure(progress: Drop.Progress?, tintColor: UIColor) {
+    self.progress = progress
+    resolvedTintColor = tintColor
+
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+
+    shadowTrackLayer.strokeColor = UIColor.black.withAlphaComponent(0.14).cgColor
+    trackLayer.strokeColor = tintColor.withAlphaComponent(0.22).cgColor
+
+    progressLayer.strokeColor = tintColor.cgColor
+    progressLayer.shadowColor = tintColor.withAlphaComponent(0.8).cgColor
+    progressLayer.shadowOpacity = 1
+    progressLayer.shadowRadius = 6
+    progressLayer.shadowOffset = .init(width: 0, height: 2)
+
+    switch progress {
+    case let .determinate(value):
+      progressLayer.removeAnimation(forKey: Constants.animationKey)
+      progressLayer.strokeStart = 0
+      progressLayer.strokeEnd = CGFloat(min(1, max(0, value)))
+
+    case .indeterminate:
+      progressLayer.strokeStart = 0
+      progressLayer.strokeEnd = Constants.indeterminateStrokeEnd
+      startIndeterminateAnimationIfNeeded()
+
+    case nil:
+      progressLayer.removeAnimation(forKey: Constants.animationKey)
+      progressLayer.strokeStart = 0
+      progressLayer.strokeEnd = 0
+    }
+
+    CATransaction.commit()
+  }
+
+  private func startIndeterminateAnimationIfNeeded() {
+    guard progressLayer.animation(forKey: Constants.animationKey) == nil else { return }
+
+    let animation = CABasicAnimation(keyPath: "transform.rotation.z")
+    animation.fromValue = 0
+    animation.toValue = CGFloat.pi * 2
+    animation.duration = 1.15
+    animation.repeatCount = .infinity
+    animation.timingFunction = CAMediaTimingFunction(name: .linear)
+    progressLayer.add(animation, forKey: Constants.animationKey)
+  }
+
+  private let shadowTrackLayer = CAShapeLayer()
+  private let trackLayer = CAShapeLayer()
+  private let progressLayer = CAShapeLayer()
 }
 
 final class RoundButton: UIButton {
@@ -362,5 +523,9 @@ extension CGRect {
   var cornerRadius: CGFloat {
     return min(width, height) / 2
   }
+}
+
+extension UIColor {
+  static let dropsProgressDefault = UIColor(red: 1, green: 0.788, blue: 0.247, alpha: 1)
 }
 #endif

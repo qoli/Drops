@@ -33,7 +33,7 @@ internal final class Presenter: NSObject {
     context = AnimationContext(view: view, container: maskingView)
   }
 
-  let drop: Drop
+  private(set) var drop: Drop
   let animator: Animator
   var isHiding = false
 
@@ -63,8 +63,13 @@ internal final class Presenter: NSObject {
     }
   }
 
+  func update(drop: Drop) {
+    self.drop = drop
+    view.update(drop: drop)
+  }
+
   let maskingView = PassthroughView()
-  let view: UIView
+  let view: DropView
   let viewController: Weak<WindowViewController>
   let context: AnimationContext
 
