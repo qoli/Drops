@@ -22,7 +22,18 @@
 //  THE SOFTWARE.
 
 #if os(iOS) || os(visionOS)
+import os.log
 import UIKit
+
+private let dropsRenderLog = OSLog(
+  subsystem: Bundle.main.bundleIdentifier ?? "Drops",
+  category: "DropsRender"
+)
+
+private func dropsRenderNotice(_ message: String) {
+  os_log("%{public}@", log: dropsRenderLog, type: .default, message)
+  print("[DropsRender] \(message)")
+}
 
 internal final class DropView: UIView {
   required init(drop: Drop) {
@@ -86,6 +97,13 @@ internal final class DropView: UIView {
     }
 
     refreshAdaptiveAppearance(for: drop)
+  }
+
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+
+    guard window != nil else { return }
+    progressView.restartIndeterminateAnimationIfNeeded(reason: "DropView.didMoveToWindow")
   }
 
   private(set) var drop: Drop
@@ -228,6 +246,13 @@ internal final class DropView: UIView {
     let progressTint = resolvedProgressTint(for: drop)
     progressView.configure(progress: drop.progress, tintColor: progressTint)
     progressView.isHidden = drop.progress == nil
+    dropsRenderNotice(
+      """
+      DropView configure title=\(drop.title) subtitle=\(drop.subtitle ?? "nil") \
+      id=\(drop.id ?? "nil") progress=\(Self.progressDescription(drop.progress)) \
+      progressHidden=\(self.progressView.isHidden) trailingHidden=\(self.trailingContainer.isHidden)
+      """
+    )
 
     button.setImage(drop.action?.icon, for: .normal)
     button.isHidden = drop.progress != nil || drop.action?.icon == nil
@@ -416,6 +441,17 @@ internal final class DropView: UIView {
   }()
 
   private static let glassTintAlpha: CGFloat = 0.12
+
+  private static func progressDescription(_ progress: Drop.Progress?) -> String {
+    switch progress {
+    case let .determinate(value):
+      return "determinate(\(String(format: "%.3f", value)))"
+    case .indeterminate:
+      return "indeterminate"
+    case nil:
+      return "nil"
+    }
+  }
 }
 
 internal final class CircularProgressView: UIView {
@@ -472,6 +508,9 @@ internal final class CircularProgressView: UIView {
   func configure(progress: Drop.Progress?, tintColor: UIColor) {
     self.progress = progress
     resolvedTintColor = tintColor
+    dropsRenderNotice(
+      "CircularProgressView configure progress=\(Self.progressDescription(progress)) tint=\(tintColor.description)"
+    )
 
     CATransaction.begin()
     CATransaction.setDisableActions(true)
@@ -486,16 +525,21 @@ internal final class CircularProgressView: UIView {
     switch progress {
     case let .determinate(value):
       progressLayer.removeAnimation(forKey: Constants.animationKey)
+      dropsRenderNotice(
+        "CircularProgressView apply determinate value=\(String(format: "%.3f", value))"
+      )
       progressLayer.strokeStart = 0
       progressLayer.strokeEnd = CGFloat(min(1, max(0, value)))
 
     case .indeterminate:
+      dropsRenderNotice("CircularProgressView apply indeterminate")
       progressLayer.strokeStart = Constants.indeterminateStrokeStart
       progressLayer.strokeEnd = Constants.indeterminateStrokeEnd
       startIndeterminateAnimationIfNeeded()
 
     case nil:
       progressLayer.removeAnimation(forKey: Constants.animationKey)
+      dropsRenderNotice("CircularProgressView apply nil progress")
       progressLayer.strokeStart = 0
       progressLayer.strokeEnd = 0
     }
@@ -503,8 +547,19 @@ internal final class CircularProgressView: UIView {
     CATransaction.commit()
   }
 
+  func restartIndeterminateAnimationIfNeeded(reason: String) {
+    guard case .indeterminate = progress else { return }
+
+    progressLayer.removeAnimation(forKey: Constants.animationKey)
+    dropsRenderNotice("CircularProgressView restart indeterminate animation reason=\(reason)")
+    startIndeterminateAnimationIfNeeded()
+  }
+
   private func startIndeterminateAnimationIfNeeded() {
-    guard progressLayer.animation(forKey: Constants.animationKey) == nil else { return }
+    guard progressLayer.animation(forKey: Constants.animationKey) == nil else {
+      dropsRenderNotice("CircularProgressView indeterminate animation already active")
+      return
+    }
 
     let animation = CABasicAnimation(keyPath: "transform.rotation.z")
     animation.fromValue = 0
@@ -513,10 +568,22 @@ internal final class CircularProgressView: UIView {
     animation.repeatCount = .infinity
     animation.timingFunction = CAMediaTimingFunction(name: .linear)
     progressLayer.add(animation, forKey: Constants.animationKey)
+    dropsRenderNotice("CircularProgressView started indeterminate animation")
   }
 
   private let trackLayer = CAShapeLayer()
   private let progressLayer = CAShapeLayer()
+
+  private static func progressDescription(_ progress: Drop.Progress?) -> String {
+    switch progress {
+    case let .determinate(value):
+      return "determinate(\(String(format: "%.3f", value)))"
+    case .indeterminate:
+      return "indeterminate"
+    case nil:
+      return "nil"
+    }
+  }
 }
 
 final class RoundButton: UIButton {
