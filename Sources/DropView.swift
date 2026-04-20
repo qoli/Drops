@@ -395,8 +395,9 @@ internal final class DropView: UIView {
 
 internal final class CircularProgressView: UIView {
   private enum Constants {
-    static let lineWidth: CGFloat = 4
-    static let indeterminateStrokeEnd: CGFloat = 0.28
+    static let lineWidth: CGFloat = 3
+    static let indeterminateStrokeStart: CGFloat = 0.12
+    static let indeterminateStrokeEnd: CGFloat = 0.62
     static let animationKey = "drops.indeterminate.rotation"
   }
 
@@ -404,10 +405,7 @@ internal final class CircularProgressView: UIView {
     super.init(frame: frame)
     isAccessibilityElement = false
 
-    [shadowTrackLayer, trackLayer, progressLayer].forEach(layer.addSublayer)
-
-    shadowTrackLayer.fillColor = UIColor.clear.cgColor
-    shadowTrackLayer.lineWidth = Constants.lineWidth
+    [trackLayer, progressLayer].forEach(layer.addSublayer)
 
     trackLayer.fillColor = UIColor.clear.cgColor
     trackLayer.lineWidth = Constants.lineWidth
@@ -424,19 +422,18 @@ internal final class CircularProgressView: UIView {
   override func layoutSubviews() {
     super.layoutSubviews()
 
-    let inset = Constants.lineWidth / 2 + 1
+    let inset = Constants.lineWidth / 2 + 2
     let ringRect = bounds.insetBy(dx: inset, dy: inset)
     let path = UIBezierPath(ovalIn: ringRect).cgPath
     let rotation = CATransform3DMakeRotation(-.pi / 2, 0, 0, 1)
 
     CATransaction.begin()
     CATransaction.setDisableActions(true)
-    [shadowTrackLayer, trackLayer, progressLayer].forEach {
+    [trackLayer, progressLayer].forEach {
       $0.path = path
       $0.frame = bounds
       $0.transform = rotation
     }
-    progressLayer.shadowPath = path
     CATransaction.commit()
   }
 
@@ -454,14 +451,12 @@ internal final class CircularProgressView: UIView {
     CATransaction.begin()
     CATransaction.setDisableActions(true)
 
-    shadowTrackLayer.strokeColor = UIColor.black.withAlphaComponent(0.14).cgColor
-    trackLayer.strokeColor = tintColor.withAlphaComponent(0.22).cgColor
+    trackLayer.strokeColor = UIColor.tertiaryLabel.withAlphaComponent(0.35).cgColor
 
     progressLayer.strokeColor = tintColor.cgColor
-    progressLayer.shadowColor = tintColor.withAlphaComponent(0.8).cgColor
-    progressLayer.shadowOpacity = 1
-    progressLayer.shadowRadius = 6
-    progressLayer.shadowOffset = .init(width: 0, height: 2)
+    progressLayer.shadowOpacity = 0
+    progressLayer.shadowRadius = 0
+    progressLayer.shadowOffset = .zero
 
     switch progress {
     case let .determinate(value):
@@ -470,7 +465,7 @@ internal final class CircularProgressView: UIView {
       progressLayer.strokeEnd = CGFloat(min(1, max(0, value)))
 
     case .indeterminate:
-      progressLayer.strokeStart = 0
+      progressLayer.strokeStart = Constants.indeterminateStrokeStart
       progressLayer.strokeEnd = Constants.indeterminateStrokeEnd
       startIndeterminateAnimationIfNeeded()
 
@@ -495,7 +490,6 @@ internal final class CircularProgressView: UIView {
     progressLayer.add(animation, forKey: Constants.animationKey)
   }
 
-  private let shadowTrackLayer = CAShapeLayer()
   private let trackLayer = CAShapeLayer()
   private let progressLayer = CAShapeLayer()
 }
@@ -526,6 +520,6 @@ extension CGRect {
 }
 
 extension UIColor {
-  static let dropsProgressDefault = UIColor(red: 1, green: 0.788, blue: 0.247, alpha: 1)
+  static let dropsProgressDefault = UIColor.systemBlue
 }
 #endif
