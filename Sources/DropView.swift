@@ -395,7 +395,7 @@ internal final class DropView: UIView {
 
 internal final class CircularProgressView: UIView {
   private enum Constants {
-    static let lineWidth: CGFloat = 3
+    static let lineWidth: CGFloat = 6
     static let indeterminateStrokeStart: CGFloat = 0.12
     static let indeterminateStrokeEnd: CGFloat = 0.62
     static let animationKey = "drops.indeterminate.rotation"
