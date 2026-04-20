@@ -35,6 +35,7 @@ final class DropTests: XCTestCase {
     XCTAssertEqual(drop.subtitleNumberOfLines, 1)
     XCTAssertNil(drop.icon)
     XCTAssertNil(drop.action)
+    XCTAssertNil(drop.maxWidth)
     XCTAssertNil(drop.progress)
     XCTAssertEqual(drop.position, .top)
     XCTAssertEqual(drop.duration, .recommended)
@@ -74,6 +75,7 @@ final class DropTests: XCTestCase {
     XCTAssertEqual(drop.subtitleNumberOfLines, 0)
     XCTAssertEqual(drop.icon, icon)
     XCTAssertEqual(drop.action?.icon, dismissIcon)
+    XCTAssertNil(drop.maxWidth)
     XCTAssertEqual(drop.position, .bottom)
     XCTAssertEqual(drop.duration, .seconds(1))
     XCTAssertEqual(drop.accessibility.message, "Hello world, I'm a drop!")
@@ -90,6 +92,11 @@ final class DropTests: XCTestCase {
     XCTAssertEqual(Drop.Progress.determinate(0.25).fractionCompleted, 0.25)
     XCTAssertEqual(Drop.Progress.determinate(1.5).fractionCompleted, 1)
     XCTAssertNil(Drop.Progress.indeterminate.fractionCompleted)
+  }
+
+  func testCustomMaxWidthIsStored() {
+    let drop = Drop(title: "Hello world", maxWidth: 320)
+    XCTAssertEqual(drop.maxWidth, 320)
   }
 }
 #endif

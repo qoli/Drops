@@ -59,6 +59,14 @@ internal final class WindowViewController: UIViewController {
     if let window = window, let activeScene = UIApplication.shared.activeWindowScene {
       window.windowScene = activeScene
       window.frame = activeScene.coordinateSpace.bounds
+
+      if let sourceWindow = activeScene.windows.first(where: \.isKeyWindow) {
+        let interfaceStyle = sourceWindow.overrideUserInterfaceStyle == .unspecified
+          ? sourceWindow.traitCollection.userInterfaceStyle
+          : sourceWindow.overrideUserInterfaceStyle
+        window.overrideUserInterfaceStyle = interfaceStyle
+        overrideUserInterfaceStyle = interfaceStyle
+      }
     }
   }
 

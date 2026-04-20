@@ -202,6 +202,18 @@ final class DropViewTests: XCTestCase {
     XCTAssertEqual(view.progressView.resolvedTintColor, accent)
   }
 
+  func testTapGestureAddedWhenProgressDropHasAction() {
+    let drop = Drop(
+      title: "Downloading",
+      action: .init(handler: {}),
+      progress: .determinate(0.4)
+    )
+    let view = DropView(drop: drop)
+
+    XCTAssertEqual(view.gestureRecognizers?.count, 1)
+    XCTAssert(view.gestureRecognizers?.first is UITapGestureRecognizer)
+  }
+
   func testIndeterminateProgressUsesFallbackTint() {
     let drop = Drop(title: "Downloading", progress: .indeterminate)
     let view = DropView(drop: drop)

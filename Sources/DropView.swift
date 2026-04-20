@@ -78,6 +78,16 @@ internal final class DropView: UIView {
     }
   }
 
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+
+    guard previousTraitCollection?.hasDifferentColorAppearance(comparedTo: traitCollection) == true else {
+      return
+    }
+
+    refreshAdaptiveAppearance(for: drop)
+  }
+
   private(set) var drop: Drop
   private var layoutConstraints: [NSLayoutConstraint] = []
   private var contentTapGesture: UITapGestureRecognizer?
@@ -231,7 +241,7 @@ internal final class DropView: UIView {
 
     trailingContainer.isHidden = !hasTrailingControl(for: drop)
 
-    let isTapActionEnabled = drop.progress == nil && drop.action?.icon == nil && drop.action != nil
+    let isTapActionEnabled = drop.action != nil && (drop.progress != nil || drop.action?.icon == nil)
     if isTapActionEnabled {
       if contentTapGesture == nil {
         let tap = UITapGestureRecognizer(target: self, action: #selector(didTapButton))
@@ -244,6 +254,17 @@ internal final class DropView: UIView {
     }
 
     stackView.spacing = drop.icon != nil && hasTrailingControl(for: drop) ? 20 : 15
+
+    refreshAdaptiveAppearance(for: drop)
+  }
+
+  private func refreshAdaptiveAppearance(for drop: Drop) {
+    titleLabel.textColor = .label
+    subtitleLabel.textColor = resolvedSecondaryForegroundColor()
+
+    if drop.icon != nil, drop.accentColor == nil {
+      imageView.tintColor = resolvedSecondaryForegroundColor()
+    }
 
     updateBackgroundAppearance(for: drop)
   }
@@ -290,6 +311,10 @@ internal final class DropView: UIView {
     drop.accentColor ?? .dropsProgressDefault
   }
 
+  private func resolvedSecondaryForegroundColor() -> UIColor {
+    UIAccessibility.isDarkerSystemColorsEnabled ? .label : .secondaryLabel
+  }
+
   lazy var titleLabel: UILabel = {
     let label = UILabel()
     label.translatesAutoresizingMaskIntoConstraints = false
@@ -305,7 +330,7 @@ internal final class DropView: UIView {
     let label = UILabel()
     label.translatesAutoresizingMaskIntoConstraints = false
     label.textAlignment = .center
-    label.textColor = UIAccessibility.isDarkerSystemColorsEnabled ? .label : .secondaryLabel
+    label.textColor = .secondaryLabel
     label.font = UIFont.preferredFont(forTextStyle: .subheadline)
     label.adjustsFontForContentSizeCategory = true
     label.adjustsFontSizeToFitWidth = true
@@ -317,7 +342,7 @@ internal final class DropView: UIView {
     view.translatesAutoresizingMaskIntoConstraints = false
     view.contentMode = .scaleAspectFit
     view.clipsToBounds = true
-    view.tintColor = UIAccessibility.isDarkerSystemColorsEnabled ? .label : .secondaryLabel
+    view.tintColor = .secondaryLabel
     return view
   }()
 

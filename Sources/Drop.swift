@@ -44,6 +44,7 @@ public struct Drop: ExpressibleByStringLiteral {
   ///   If `nil`, system defaults are used.
   ///   - glassTintColor: Optional tint color to overlay the glass effect (iOS 26+).
   ///   If `nil`, no extra tint overlay is applied.
+  ///   - maxWidth: Optional maximum width for the drop content. If `nil`, a platform-tuned default is used.
   public init(
     title: String,
     titleNumberOfLines: Int = 1,
@@ -56,6 +57,7 @@ public struct Drop: ExpressibleByStringLiteral {
     accessibility: Accessibility? = nil,
     accentColor: UIColor? = nil,
     glassTintColor: UIColor? = nil,
+    maxWidth: CGFloat? = nil,
     id: String? = nil,
     progress: Progress? = nil
   ) {
@@ -76,6 +78,7 @@ public struct Drop: ExpressibleByStringLiteral {
     ?? .init(message: [title, subtitle].compactMap { $0 }.joined(separator: ", "))
     self.accentColor = accentColor
     self.glassTintColor = glassTintColor
+    self.maxWidth = maxWidth
     self.progress = progress
   }
 
@@ -90,6 +93,7 @@ public struct Drop: ExpressibleByStringLiteral {
     accessibility = .init(message: title)
     accentColor = nil
     glassTintColor = nil
+    maxWidth = nil
     progress = nil
   }
 
@@ -128,6 +132,9 @@ public struct Drop: ExpressibleByStringLiteral {
 
   /// Optional tint color overlay for the glass effect (iOS 26+ only).
   public var glassTintColor: UIColor?
+
+  /// Optional maximum width used during presentation.
+  public var maxWidth: CGFloat?
 
   /// Optional progress indicator.
   public var progress: Progress?
@@ -243,6 +250,7 @@ internal extension Drop {
     updated.accessibility = incoming.accessibility
     updated.accentColor = incoming.accentColor
     updated.glassTintColor = incoming.glassTintColor
+    updated.maxWidth = incoming.maxWidth
     updated.progress = incoming.progress
     return updated
   }
