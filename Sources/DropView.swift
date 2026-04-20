@@ -476,7 +476,7 @@ internal final class CircularProgressView: UIView {
     CATransaction.begin()
     CATransaction.setDisableActions(true)
 
-    trackLayer.strokeColor = UIColor.tertiaryLabel.withAlphaComponent(0.75).cgColor
+    trackLayer.strokeColor = UIColor.tertiaryLabel.withAlphaComponent(0.15).cgColor
 
     progressLayer.strokeColor = tintColor.cgColor
     progressLayer.shadowOpacity = 0
