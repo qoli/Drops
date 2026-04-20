@@ -96,8 +96,8 @@ internal final class DropView: UIView {
     var constraints: [NSLayoutConstraint] = [
       imageView.heightAnchor.constraint(equalToConstant: 25),
       imageView.widthAnchor.constraint(equalToConstant: 25),
-      trailingContainer.heightAnchor.constraint(equalToConstant: 35),
-      trailingContainer.widthAnchor.constraint(equalToConstant: 35)
+      trailingContainer.heightAnchor.constraint(equalToConstant: 30),
+      trailingContainer.widthAnchor.constraint(equalToConstant: 30)
     ]
 
     var insets = UIEdgeInsets(top: 7.5, left: 12.5, bottom: 7.5, right: 12.5)
@@ -476,7 +476,7 @@ internal final class CircularProgressView: UIView {
     CATransaction.begin()
     CATransaction.setDisableActions(true)
 
-    trackLayer.strokeColor = UIColor.tertiaryLabel.withAlphaComponent(0.35).cgColor
+    trackLayer.strokeColor = UIColor.tertiaryLabel.withAlphaComponent(0.75).cgColor
 
     progressLayer.strokeColor = tintColor.cgColor
     progressLayer.shadowOpacity = 0
