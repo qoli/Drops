@@ -99,6 +99,13 @@ internal final class DropView: UIView {
     refreshAdaptiveAppearance(for: drop)
   }
 
+  override func tintColorDidChange() {
+    super.tintColorDidChange()
+
+    guard drop.progress != nil else { return }
+    progressView.configure(progress: drop.progress, tintColor: resolvedProgressTint(for: drop))
+  }
+
   override func didMoveToWindow() {
     super.didMoveToWindow()
 
@@ -333,7 +340,7 @@ internal final class DropView: UIView {
   }
 
   private func resolvedProgressTint(for drop: Drop) -> UIColor {
-    drop.accentColor ?? .dropsProgressDefault
+    drop.accentColor ?? tintColor ?? .dropsProgressDefault
   }
 
   private func resolvedSecondaryForegroundColor() -> UIColor {

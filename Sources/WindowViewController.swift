@@ -70,6 +70,7 @@ internal final class WindowViewController: UIViewController {
       window.windowScene = activeScene
       window.frame = activeScene.coordinateSpace.bounds
       syncInterfaceStyle()
+      syncTintColor()
     }
   }
 
@@ -91,6 +92,14 @@ internal final class WindowViewController: UIViewController {
 
     window.overrideUserInterfaceStyle = interfaceStyle
     overrideUserInterfaceStyle = interfaceStyle
+  }
+
+  private func syncTintColor() {
+    guard let window else { return }
+    guard let tintColor = resolvedSourceTintColor() else { return }
+
+    window.tintColor = tintColor
+    view.tintColor = tintColor
   }
 
   private func resolvedSourceInterfaceStyle() -> UIUserInterfaceStyle? {
@@ -120,6 +129,17 @@ internal final class WindowViewController: UIViewController {
     }
 
     return nil
+  }
+
+  private func resolvedSourceTintColor() -> UIColor? {
+    guard let activeScene = UIApplication.shared.activeWindowScene else { return nil }
+
+    let candidateWindows = activeScene.windows.filter { candidate in
+      candidate !== window && !candidate.isHidden && candidate.alpha > 0.01
+    }
+
+    let sourceWindow = candidateWindows.first(where: \.isKeyWindow) ?? candidateWindows.last
+    return sourceWindow?.tintColor
   }
 }
 

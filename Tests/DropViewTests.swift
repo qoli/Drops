@@ -55,8 +55,8 @@ final class DropViewTests: XCTestCase {
     let expected: [NSLayoutConstraint] = [
       view.imageView.heightAnchor.constraint(equalToConstant: 25),
       view.imageView.widthAnchor.constraint(equalToConstant: 25),
-      view.trailingContainer.heightAnchor.constraint(equalToConstant: 35),
-      view.trailingContainer.widthAnchor.constraint(equalToConstant: 35),
+      view.trailingContainer.heightAnchor.constraint(equalToConstant: 30),
+      view.trailingContainer.widthAnchor.constraint(equalToConstant: 30),
       view.stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 50),
       view.stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 15),
       view.stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -50),
@@ -80,8 +80,8 @@ final class DropViewTests: XCTestCase {
     let expected: [NSLayoutConstraint] = [
       view.imageView.heightAnchor.constraint(equalToConstant: 25),
       view.imageView.widthAnchor.constraint(equalToConstant: 25),
-      view.trailingContainer.heightAnchor.constraint(equalToConstant: 35),
-      view.trailingContainer.widthAnchor.constraint(equalToConstant: 35),
+      view.trailingContainer.heightAnchor.constraint(equalToConstant: 30),
+      view.trailingContainer.widthAnchor.constraint(equalToConstant: 30),
       view.stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 50),
       view.stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 7.5),
       view.stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -50),
@@ -105,8 +105,8 @@ final class DropViewTests: XCTestCase {
     let expected: [NSLayoutConstraint] = [
       view.imageView.heightAnchor.constraint(equalToConstant: 25),
       view.imageView.widthAnchor.constraint(equalToConstant: 25),
-      view.trailingContainer.heightAnchor.constraint(equalToConstant: 35),
-      view.trailingContainer.widthAnchor.constraint(equalToConstant: 35),
+      view.trailingContainer.heightAnchor.constraint(equalToConstant: 30),
+      view.trailingContainer.widthAnchor.constraint(equalToConstant: 30),
       view.stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
       view.stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
       view.stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
@@ -214,13 +214,16 @@ final class DropViewTests: XCTestCase {
     XCTAssert(view.gestureRecognizers?.first is UITapGestureRecognizer)
   }
 
-  func testIndeterminateProgressUsesFallbackTint() {
+  func testIndeterminateProgressUsesViewTint() {
     let drop = Drop(title: "Downloading", progress: .indeterminate)
     let view = DropView(drop: drop)
+    let tint = UIColor.systemPink
+    view.tintColor = tint
+    view.update(drop: drop)
 
     XCTAssertEqual(view.progressView.progress, .indeterminate)
     XCTAssertTrue(view.progressView.isAnimatingIndeterminate)
-    XCTAssertEqual(view.progressView.resolvedTintColor, .dropsProgressDefault)
+    XCTAssertEqual(view.progressView.resolvedTintColor, tint)
   }
 
   func testUpdatingToProgressRemovesTapGesture() {
