@@ -20,6 +20,8 @@ A µFramework for showing alerts like the one used when copying from pasteboard 
 - Support dynamic font sizing
 - Support announcing title and subtitle via VoiceOver
 - Show from top or bottom of screen
+- Show determinate and indeterminate progress indicators
+- Update visible or queued drops in place with stable IDs
 
 ---
 
@@ -67,6 +69,57 @@ Drops.show("Title")
 ```swift
 Drops.show(drop)
 ```
+
+3. Show progress:
+
+```swift
+let id = "download"
+
+Drops.show(
+    Drop(
+        title: "Downloading",
+        subtitle: "25%",
+        duration: .untilHidden,
+        id: id,
+        progress: .determinate(0.25)
+    )
+)
+
+Drops.show(
+    Drop(
+        title: "Downloading",
+        subtitle: "60%",
+        duration: .untilHidden,
+        id: id,
+        progress: .determinate(0.6)
+    )
+)
+
+Drops.show(
+    Drop(
+        title: "Completed",
+        duration: .seconds(1.5),
+        id: id,
+        progress: .determinate(1)
+    )
+)
+```
+
+Use `.indeterminate` when the amount of work is unknown:
+
+```swift
+Drops.show(
+    Drop(
+        title: "Syncing",
+        subtitle: "Please wait",
+        duration: .untilHidden,
+        id: "sync",
+        progress: .indeterminate
+    )
+)
+```
+
+Drops with the same non-empty `id` update the visible drop or replace a matching queued drop instead of adding another item to the queue. Determinate progress values are normalized to the `0...1` range.
 
 ###### SwiftUI
 ```swift
