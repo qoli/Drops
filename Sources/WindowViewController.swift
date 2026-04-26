@@ -51,6 +51,16 @@ internal final class WindowViewController: UIViewController {
       ?? .default
   }
 
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+
+    guard previousTraitCollection?.hasDifferentColorAppearance(comparedTo: traitCollection) == true else {
+      return
+    }
+
+    syncInterfaceStyle()
+  }
+
   func install() {
       #if os(iOS)
     window?.frame = UIScreen.main.bounds
@@ -59,6 +69,8 @@ internal final class WindowViewController: UIViewController {
     if let window = window, let activeScene = UIApplication.shared.activeWindowScene {
       window.windowScene = activeScene
       window.frame = activeScene.coordinateSpace.bounds
+      syncInterfaceStyle()
+      syncTintColor()
     }
   }
 
@@ -69,6 +81,66 @@ internal final class WindowViewController: UIViewController {
   }
 
   var window: UIWindow?
+
+  private func syncInterfaceStyle() {
+    guard let window else { return }
+
+    let interfaceStyle = resolvedSourceInterfaceStyle()
+      ?? traitCollection.userInterfaceStyle
+
+    guard interfaceStyle != .unspecified else { return }
+
+    window.overrideUserInterfaceStyle = interfaceStyle
+    overrideUserInterfaceStyle = interfaceStyle
+  }
+
+  private func syncTintColor() {
+    guard let window else { return }
+    guard let tintColor = resolvedSourceTintColor() else { return }
+
+    window.tintColor = tintColor
+    view.tintColor = tintColor
+  }
+
+  private func resolvedSourceInterfaceStyle() -> UIUserInterfaceStyle? {
+    guard let activeScene = UIApplication.shared.activeWindowScene else { return nil }
+
+    let candidateWindows = activeScene.windows.filter { candidate in
+      candidate !== window && !candidate.isHidden && candidate.alpha > 0.01
+    }
+
+    if let sourceWindow = candidateWindows.first(where: \.isKeyWindow) ?? candidateWindows.last {
+      let overrideStyle = sourceWindow.overrideUserInterfaceStyle
+      if overrideStyle != .unspecified {
+        return overrideStyle
+      }
+
+      let traitStyle = sourceWindow.traitCollection.userInterfaceStyle
+      if traitStyle != .unspecified {
+        return traitStyle
+      }
+    }
+
+    if let topViewController = candidateWindows.last?.rootViewController?.top {
+      let traitStyle = topViewController.traitCollection.userInterfaceStyle
+      if traitStyle != .unspecified {
+        return traitStyle
+      }
+    }
+
+    return nil
+  }
+
+  private func resolvedSourceTintColor() -> UIColor? {
+    guard let activeScene = UIApplication.shared.activeWindowScene else { return nil }
+
+    let candidateWindows = activeScene.windows.filter { candidate in
+      candidate !== window && !candidate.isHidden && candidate.alpha > 0.01
+    }
+
+    let sourceWindow = candidateWindows.first(where: \.isKeyWindow) ?? candidateWindows.last
+    return sourceWindow?.tintColor
+  }
 }
 
 internal extension UIApplication {

@@ -88,8 +88,14 @@ public final class Drops {
   /// - Parameter drop: `Drop` to show.
   public func show(_ drop: Drop) {
     DispatchQueue.main.async {
-      let presenter = Presenter(drop: drop, delegate: self)
-      self.enqueue(presenter: presenter)
+      self.dispatchQueue.sync {
+        if let id = drop.id, self.updateExistingDropIfNeeded(drop, matching: id) {
+          return
+        }
+
+        let presenter = Presenter(drop: drop, delegate: self)
+        self.enqueue(presenter: presenter)
+      }
     }
   }
 
@@ -186,13 +192,30 @@ public final class Drops {
   }
 
   func queueAutoHide() {
-    guard let current = current else { return }
+    guard let current = current, let delay = current.drop.duration.value else { return }
     autohideToken = current
-    let delayTime = DispatchTime.now() + current.drop.duration.value
+    let delayTime = DispatchTime.now() + delay
     dispatchQueue.asyncAfter(deadline: delayTime) { [weak self] in
       if self?.autohideToken !== current { return }
       self?.hide(presenter: current)
     }
+  }
+
+  @discardableResult
+  private func updateExistingDropIfNeeded(_ drop: Drop, matching id: String) -> Bool {
+    if let current, current.drop.id == id {
+      current.update(drop: current.drop.replacingCurrent(with: drop))
+      autohideToken = nil
+      queueAutoHide()
+      return true
+    }
+
+    if let index = queue.firstIndex(where: { $0.drop.id == id }) {
+      queue[index] = Presenter(drop: drop, delegate: self)
+      return true
+    }
+
+    return false
   }
 }
 

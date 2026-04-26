@@ -57,6 +57,8 @@ internal final class Animator {
   let closePercentThreshold: CGFloat = 0.33
   let closeAbsoluteThreshold: CGFloat = 75.0
   let bounceOffset: CGFloat = 5
+  let compactMaxWidth: CGFloat = 260
+  let regularMaxWidth: CGFloat = 380
 
   private lazy var panGestureRecognizer: UIPanGestureRecognizer = {
     let recognizer = UIPanGestureRecognizer()
@@ -78,6 +80,9 @@ internal final class Animator {
       view.leadingAnchor.constraint(greaterThanOrEqualTo: container.safeAreaLayoutGuide.leadingAnchor, constant: 20),
       view.trailingAnchor.constraint(lessThanOrEqualTo: container.safeAreaLayoutGuide.trailingAnchor, constant: -20)
     ]
+
+    let maxWidth = dropMaxWidth(for: view, in: container)
+    constraints.append(view.widthAnchor.constraint(lessThanOrEqualToConstant: maxWidth))
 
     switch position {
     case .top:
@@ -103,6 +108,17 @@ internal final class Animator {
     }
 
     view.addGestureRecognizer(panGestureRecognizer)
+  }
+
+  private func dropMaxWidth(for view: UIView, in container: UIView) -> CGFloat {
+    if let dropView = view as? DropView, let maxWidth = dropView.drop.maxWidth {
+      return maxWidth
+    }
+
+    if container.traitCollection.horizontalSizeClass == .compact {
+      return compactMaxWidth
+    }
+    return regularMaxWidth
   }
 
   func show(context: AnimationContext, completion: @escaping AnimationCompletion) {

@@ -228,6 +228,92 @@ final class DropsTests: XCTestCase {
     Drops.shared.didDismissDrop = nil
     XCTAssertNil(Drops.didDismissDrop)
   }
+
+  func testShowWithMatchingIDUpdatesCurrentPresenter() async throws {
+    let drops = Drops(delayBetweenDrops: 0)
+    let initial = Drop(
+      title: "Downloading",
+      subtitle: "25%",
+      duration: .untilHidden,
+      id: "mlx-job",
+      progress: .determinate(0.25)
+    )
+    drops.show(initial)
+
+    await Task.sleep(seconds: 0.1)
+    let currentPresenter = try XCTUnwrap(drops.current)
+
+    let updated = Drop(
+      title: "Downloading",
+      subtitle: "60%",
+      duration: .untilHidden,
+      id: "mlx-job",
+      progress: .determinate(0.6)
+    )
+    drops.show(updated)
+
+    await Task.sleep(seconds: 0.1)
+    XCTAssertTrue(drops.current === currentPresenter)
+    XCTAssertEqual(drops.queue.count, 0)
+    XCTAssertEqual(drops.current?.drop.subtitle, "60%")
+    XCTAssertEqual(drops.current?.drop.progress?.fractionCompleted, 0.6)
+  }
+
+  func testShowWithMatchingIDReplacesQueuedPresenter() async {
+    let drops = Drops(delayBetweenDrops: 0)
+
+    drops.show(Drop(title: "Current", duration: .untilHidden))
+    drops.show(Drop(title: "Queued 1", duration: .seconds(1), id: "mlx-job"))
+    drops.show(Drop(title: "Queued 2", duration: .seconds(1), id: "other"))
+
+    await Task.sleep(seconds: 0.1)
+    XCTAssertEqual(drops.queue.count, 2)
+
+    drops.show(Drop(title: "Queued Replacement", duration: .seconds(1), id: "mlx-job"))
+
+    await Task.sleep(seconds: 0.1)
+    XCTAssertEqual(drops.queue.count, 2)
+    XCTAssertEqual(drops.queue.first?.drop.title, "Queued Replacement")
+  }
+
+  func testPersistentDropDoesNotAutoHide() async {
+    let drops = Drops(delayBetweenDrops: 0)
+    drops.show(Drop(title: "Downloading", duration: .untilHidden, id: "mlx-job"))
+
+    await Task.sleep(seconds: 0.1)
+    XCTAssertNotNil(drops.current)
+
+    await Task.sleep(seconds: 2.5)
+    XCTAssertNotNil(drops.current)
+  }
+
+  func testUpdatingPersistentDropToTimedDurationRestartsAutoHide() async {
+    let drops = Drops(delayBetweenDrops: 0)
+    drops.show(Drop(title: "Downloading", duration: .untilHidden, id: "mlx-job"))
+
+    await Task.sleep(seconds: 0.1)
+    XCTAssertNotNil(drops.current)
+
+    drops.show(Drop(title: "Completed", duration: .seconds(0.2), id: "mlx-job"))
+
+    await Task.sleep(seconds: 0.1)
+    XCTAssertEqual(drops.current?.drop.title, "Completed")
+
+    await Task.sleep(seconds: 0.8)
+    XCTAssertNil(drops.current)
+  }
+
+  func testUnmatchedIDStillQueuesNormally() async {
+    let drops = Drops(delayBetweenDrops: 0)
+    drops.show(Drop(title: "Current", duration: .untilHidden, id: "current"))
+
+    await Task.sleep(seconds: 0.1)
+    drops.show(Drop(title: "Different", duration: .seconds(1), id: "other"))
+
+    await Task.sleep(seconds: 0.1)
+    XCTAssertEqual(drops.queue.count, 1)
+    XCTAssertEqual(drops.queue.first?.drop.id, "other")
+  }
 }
 
 private extension Task where Success == Never, Failure == Never {

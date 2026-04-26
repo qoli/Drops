@@ -52,29 +52,44 @@ final class AnimatorTests: XCTestCase {
       XCTAssertFalse(view.translatesAutoresizingMaskIntoConstraints)
       XCTAssertEqual(container.subviews[0], view)
       XCTAssertEqual(view.superview, container)
+      let installedConstraints = container.constraints + view.constraints
 
-      var expectedConstraints: [NSLayoutConstraint] = [
-        view.centerXAnchor.constraint(equalTo: container.safeAreaLayoutGuide.centerXAnchor),
-        view.leadingAnchor.constraint(greaterThanOrEqualTo: container.safeAreaLayoutGuide.leadingAnchor, constant: 20),
-        view.trailingAnchor.constraint(lessThanOrEqualTo: container.safeAreaLayoutGuide.trailingAnchor, constant: -20),
-        view.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor, constant: animator.bounceOffset)
-      ]
+      XCTAssertTrue(installedConstraints.contains {
+        $0.firstAnchor == view.centerXAnchor &&
+          $0.secondAnchor == container.safeAreaLayoutGuide.centerXAnchor
+      })
+      XCTAssertTrue(installedConstraints.contains {
+        $0.firstAnchor == view.leadingAnchor &&
+          $0.secondAnchor == container.safeAreaLayoutGuide.leadingAnchor &&
+          $0.relation == .greaterThanOrEqual &&
+          $0.constant == 20
+      })
+      XCTAssertTrue(installedConstraints.contains {
+        $0.firstAnchor == view.trailingAnchor &&
+          $0.secondAnchor == container.safeAreaLayoutGuide.trailingAnchor &&
+          $0.relation == .lessThanOrEqual &&
+          $0.constant == -20
+      })
+      XCTAssertTrue(installedConstraints.contains {
+        $0.firstAnchor == view.widthAnchor &&
+          $0.secondAnchor == nil &&
+          $0.relation == .lessThanOrEqual &&
+          $0.constant == animator.regularMaxWidth
+      })
 
       switch position {
       case .top:
-        expectedConstraints += [
-        ]
+        XCTAssertTrue(installedConstraints.contains {
+          $0.firstAnchor == view.topAnchor &&
+            $0.secondAnchor == container.safeAreaLayoutGuide.topAnchor &&
+            $0.constant == animator.bounceOffset
+        })
       case .bottom:
-        expectedConstraints += [
-          view.bottomAnchor.constraint(
-            equalTo: container.safeAreaLayoutGuide.bottomAnchor,
-            constant: -animator.bounceOffset
-          )
-        ]
-      }
-
-      for (actual, expected) in zip(view.constraints, expectedConstraints) {
-        XCTAssertEqual(actual, expected)
+        XCTAssertTrue(installedConstraints.contains {
+          $0.firstAnchor == view.bottomAnchor &&
+            $0.secondAnchor == container.safeAreaLayoutGuide.bottomAnchor &&
+            $0.constant == -animator.bounceOffset
+        })
       }
 
       let animationDistance = view.frame.height
@@ -89,6 +104,23 @@ final class AnimatorTests: XCTestCase {
 
     install(position: .top)
     install(position: .bottom)
+  }
+
+  func testInstallUsesDropSpecificMaxWidth() {
+    let delegate = TestAnimatorDelegate()
+    let animator = Animator(position: .top, delegate: delegate)
+
+    let view = DropView(drop: Drop(title: "Title", maxWidth: 280))
+    let container = UIView()
+    let context = AnimationContext(view: view, container: container)
+
+    animator.install(context: context)
+
+    let widthConstraint = view.constraints.first {
+      $0.firstAnchor == view.widthAnchor && $0.relation == .lessThanOrEqual
+    }
+
+    XCTAssertEqual(widthConstraint?.constant, 280)
   }
 
   func testShowWithCompletionBeforeCallingInstall() {

@@ -30,7 +30,17 @@ final class DropViewTests: XCTestCase {
     let drop = Drop(title: "Test")
     let view = DropView(drop: drop)
     XCTAssertEqual(view.drop, drop)
-    XCTAssertEqual(view.backgroundColor, .secondarySystemBackground)
+    if #available(iOS 26.0, *) {
+      XCTAssertEqual(
+        view.backgroundColor?.resolvedColor(with: view.traitCollection),
+        UIColor.clear.resolvedColor(with: view.traitCollection)
+      )
+    } else {
+      XCTAssertEqual(
+        view.backgroundColor?.resolvedColor(with: view.traitCollection),
+        UIColor.secondarySystemBackground.resolvedColor(with: view.traitCollection)
+      )
+    }
     XCTAssertFalse(view.constraints.isEmpty)
     XCTAssertFalse(view.subviews.isEmpty)
 
@@ -45,8 +55,8 @@ final class DropViewTests: XCTestCase {
     let expected: [NSLayoutConstraint] = [
       view.imageView.heightAnchor.constraint(equalToConstant: 25),
       view.imageView.widthAnchor.constraint(equalToConstant: 25),
-      view.button.heightAnchor.constraint(equalToConstant: 35),
-      view.button.widthAnchor.constraint(equalToConstant: 35),
+      view.trailingContainer.heightAnchor.constraint(equalToConstant: 30),
+      view.trailingContainer.widthAnchor.constraint(equalToConstant: 30),
       view.stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 50),
       view.stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 15),
       view.stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -50),
@@ -70,8 +80,8 @@ final class DropViewTests: XCTestCase {
     let expected: [NSLayoutConstraint] = [
       view.imageView.heightAnchor.constraint(equalToConstant: 25),
       view.imageView.widthAnchor.constraint(equalToConstant: 25),
-      view.button.heightAnchor.constraint(equalToConstant: 35),
-      view.button.widthAnchor.constraint(equalToConstant: 35),
+      view.trailingContainer.heightAnchor.constraint(equalToConstant: 30),
+      view.trailingContainer.widthAnchor.constraint(equalToConstant: 30),
       view.stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 50),
       view.stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 7.5),
       view.stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -50),
@@ -95,8 +105,8 @@ final class DropViewTests: XCTestCase {
     let expected: [NSLayoutConstraint] = [
       view.imageView.heightAnchor.constraint(equalToConstant: 25),
       view.imageView.widthAnchor.constraint(equalToConstant: 25),
-      view.button.heightAnchor.constraint(equalToConstant: 35),
-      view.button.widthAnchor.constraint(equalToConstant: 35),
+      view.trailingContainer.heightAnchor.constraint(equalToConstant: 30),
+      view.trailingContainer.widthAnchor.constraint(equalToConstant: 30),
       view.stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
       view.stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
       view.stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
@@ -141,7 +151,6 @@ final class DropViewTests: XCTestCase {
     let drop2 = Drop(title: "Title", icon: UIImage(), action: .init(icon: UIImage(), handler: {}))
     let view2 = DropView(drop: drop2)
     XCTAssertEqual(view2.stackView.spacing, 20)
-
   }
 
   func testActionIsCalledWhenButtonIsTapped() {
@@ -172,6 +181,62 @@ final class DropViewTests: XCTestCase {
     let view2 = DropView(drop: drop2)
     XCTAssertEqual(view2.titleLabel.numberOfLines, 3)
     XCTAssertEqual(view2.subtitleLabel.numberOfLines, 0)
+  }
+
+  func testProgressViewReplacesActionButton() {
+    let accent = UIColor.systemOrange
+    let drop = Drop(
+      title: "Downloading",
+      subtitle: "Model",
+      action: .init(icon: UIImage(), handler: {}),
+      accentColor: accent,
+      progress: .determinate(0.4)
+    )
+
+    let view = DropView(drop: drop)
+
+    XCTAssertFalse(view.progressView.isHidden)
+    XCTAssertTrue(view.button.isHidden)
+    XCTAssertFalse(view.trailingContainer.isHidden)
+    XCTAssertEqual(view.progressView.progress?.fractionCompleted, 0.4)
+    XCTAssertEqual(view.progressView.resolvedTintColor, accent)
+  }
+
+  func testTapGestureAddedWhenProgressDropHasAction() {
+    let drop = Drop(
+      title: "Downloading",
+      action: .init(handler: {}),
+      progress: .determinate(0.4)
+    )
+    let view = DropView(drop: drop)
+
+    XCTAssertEqual(view.gestureRecognizers?.count, 1)
+    XCTAssert(view.gestureRecognizers?.first is UITapGestureRecognizer)
+  }
+
+  func testIndeterminateProgressUsesViewTint() {
+    let drop = Drop(title: "Downloading", progress: .indeterminate)
+    let view = DropView(drop: drop)
+    let tint = UIColor.systemPink
+    view.tintColor = tint
+    view.update(drop: drop)
+
+    XCTAssertEqual(view.progressView.progress, .indeterminate)
+    XCTAssertTrue(view.progressView.isAnimatingIndeterminate)
+    XCTAssertEqual(view.progressView.resolvedTintColor, tint)
+  }
+
+  func testUpdatingToProgressRemovesTapGesture() {
+    let initial = Drop(title: "Title", action: .init(handler: {}))
+    let view = DropView(drop: initial)
+    XCTAssertEqual(view.gestureRecognizers?.count, 1)
+
+    let updated = Drop(title: "Title", progress: .determinate(0.7))
+    view.update(drop: updated)
+
+    XCTAssertTrue(view.gestureRecognizers?.isEmpty ?? true)
+    XCTAssertFalse(view.progressView.isHidden)
+    XCTAssertTrue(view.button.isHidden)
   }
 }
 
